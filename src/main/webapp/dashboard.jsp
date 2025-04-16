@@ -36,7 +36,7 @@
         </div>
         <div id="trendingMoviesSection" class="collapse">
         <div id="trendingMovies" class="row">
-            <%  
+            <%--  
                 String error = (String) request.getAttribute("error");
                 String json = (String) request.getAttribute("moviesJson");
                 if (json != null) {
@@ -83,8 +83,9 @@
             %>
                 <p>No movie data found.</p>
             <%
-                }
-            %>
+                } 
+                --%>
+            
         </div>
         </div>
         <!-- ?? Your Favorites -->
@@ -100,41 +101,118 @@
         </div>
     </div>
     <script>
+        
+        document.addEventListener('click', function(e) {
+            // Handle Add to Favorites
+            if (e.target.classList.contains('add-fav-btn')) {
+                const button = e.target;
+                const movieId = button.dataset.movieId;
+                const title = button.dataset.title;
+                const poster = button.dataset.poster;
+                const rating = button.dataset.rating;
+
+                fetch("AddFavoriteServlet", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                    body: "movie_id=" + encodeURIComponent(movieId) +
+                        "&title=" + encodeURIComponent(title) +
+                        "&poster=" + encodeURIComponent(poster) +
+                        "&rating=" + encodeURIComponent(rating)
+                })
+                .then(response => {
+                    if (response.ok) {
+                        loadFavorites();
+                        alert("Added to favorites!");
+                    } else {
+                        alert("Failed to add favorite.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                });
+            }
+
+            // Handle Remove from Favorites
+            if (e.target.classList.contains('remove-fav-btn')) {
+                const button = e.target;
+                const movieId = button.dataset.movieId;
+
+                fetch("RemoveFromFavoritesServlet", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                    body: "movie_id=" + encodeURIComponent(movieId)
+                })
+                .then(response => {
+                    if (response.ok) {
+                        loadFavorites();
+                    } else {
+                        alert("Failed to remove movie from favorites.");
+                    }
+                });
+            }
+        });
+        //loading trending titles from MovieSrvlet
+        function loadTrendingMovies() {
+            fetch("movies")  // This calls servlet
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Network response was not ok");
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const moviesContainer = document.getElementById("trendingMovies");
+                    moviesContainer.innerHTML = "";
+
+                    // Use the same structure your servlet returns
+                    const movies = data.results || [];
+
+                    movies.forEach(movie => {
+                        const posterPath = movie.poster_path 
+                            ? "https://image.tmdb.org/t/p/w500"+movie.poster_path
+                            : "https://via.placeholder.com/500x750?text=No+Poster+Available";
+
+                        const card =
+                               '<div class="col-md-3">' +
+                                '<div class="card mb-3">' +
+                                    '<img src="' + posterPath + '" class="card-img-top" alt="' + movie.title + '">' +
+                                    '<div class="card-body">' +
+                                        '<h5 class="card-title">' + movie.title + '</h5>' +
+                                        '<p class="card-text">Rating: ' + movie.vote_average + '</p>' +
+                                        '<button class="btn btn-primary add-fav-btn" ' +
+                                            'data-movie-id="' + movie.id + '" ' +  
+                                            'data-title="' + movie.title + '" ' +  
+                                            'data-poster="' + posterPath + '" ' +  
+                                            'data-rating="' + movie.vote_average + '">' +  
+                                            'Add to Favorites' +
+                                        '</button>'+
+                                    '</div>' +
+                                '</div>' +
+                            '</div>';
+
+                        moviesContainer.innerHTML += card;
+                    });
+                   
+                })
+                .catch(error => {
+                    console.error("Error loading movies:", error);
+                    // Show user-friendly error message
+                    document.getElementById("trendingMovies").innerHTML = 
+                        '<div class="alert alert-danger">Failed to load movies. Please try again later.</div>';
+                });
+        }
+
+        
+         
         //adding eventListener to all buttots
         document.addEventListener("DOMContentLoaded", function () {
-            const buttons = document.querySelectorAll(".add-fav-btn");
-            buttons.forEach(button => {
-                button.addEventListener("click", function () {
-                    const movieId = this.dataset.movieId;
-                    const title = this.dataset.title;
-                    const poster = this.dataset.poster;
-                    const rating = this.dataset.rating;
-
-                    fetch("AddFavoriteServlet", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/x-www-form-urlencoded"
-                        },
-                        body: "movie_id=" + encodeURIComponent(movieId) +
-                            "&title=" + encodeURIComponent(title) +
-                            "&poster=" + encodeURIComponent(poster) +
-                            "&rating=" + encodeURIComponent(rating)
-
-
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            loadFavorites();
-                            alert("Added to favorites!");
-                        } else {
-                            alert("Failed to add favorite.");
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error:", error);
-                    });
-                });
-            });
+            loadTrendingMovies();
+            loadFavorites(); 
+            
         });
         //used to load fields from favorites table 
         function loadFavorites() {
@@ -166,13 +244,13 @@
                         
                         favoritesSection.innerHTML += card;
                     });
-                    bindRemoveButtons();
+                   // bindRemoveButtons();
                 })
                 .catch(error => {
                     console.error("Error loading favorites:", error);
                 });
         }
-        function bindRemoveButtons() {
+        /*function bindRemoveButtons() {
             const removeButtons = document.querySelectorAll(".remove-fav-btn");
 
             removeButtons.forEach(button => {
@@ -195,11 +273,9 @@
                     });
                 });
             });
-        }
+        }*/
 
-        window.onload = function () {
-            loadFavorites(); 
-        };
+       
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 

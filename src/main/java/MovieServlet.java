@@ -1,6 +1,8 @@
 import com.google.gson.*;
+import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Properties;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -30,25 +32,32 @@ public class MovieServlet extends HttpServlet {
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             
-            Scanner scanner = new Scanner(conn.getInputStream());
-            StringBuilder json = new StringBuilder();
-            while (scanner.hasNext()) {
-                json.append(scanner.nextLine());
+            // Get HTTP response code from TMDB API first
+            int responseCode = conn.getResponseCode();
+            
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                // Success - forward the exact response
+                try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream()))) {
+                    
+                    response.setStatus(HttpServletResponse.SC_OK); // 200
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.getWriter().write(line);
+                    }
+                }
+            } else {
+                // Forward TMDB's error
+                response.setStatus(responseCode);
+                response.getWriter().write("{\"error\":\"TMDB API returned " + responseCode + "\"}");
             }
-            scanner.close();
-
-            request.setAttribute("moviesJson", json.toString());
-            //System.out.println("Fetched JSON: " + json.toString());
             
-            
-
         } catch (Exception e) {
-            
-            request.setAttribute("error", "Failed to fetch data");
-            
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\":\"Failed to fetch data\"}");
         }
-            // Pass the JSON to the JSP
-        RequestDispatcher dispatcher = request.getRequestDispatcher("dashboard.jsp");
-        dispatcher.forward(request, response);
+
+        
     }
 }
